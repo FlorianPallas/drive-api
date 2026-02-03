@@ -1,18 +1,34 @@
-use axum::{Router, response::Html, routing::get};
+use crate::{infrastructure::file_repository::FileRepository, ui::axum::ServeExt};
+use libsql::params;
+use logic::file_service::FileService;
+
+mod infrastructure;
+mod logic;
+mod ui;
+
+#[derive(Clone)]
+pub struct Context {
+    file_service: FileService,
+}
 
 #[tokio::main]
 async fn main() {
-    // build our application with a route
-    let app = Router::new().route("/", get(handler));
-
-    // run it
-    let listener = tokio::net::TcpListener::bind("127.0.0.1:3000")
+    let database = libsql::Builder::new_local("./data/drive.db")
+        .build()
         .await
         .unwrap();
-    println!("listening on {}", listener.local_addr().unwrap());
-    axum::serve(listener, app).await.unwrap();
-}
 
-async fn handler() -> Html<&'static str> {
-    Html("<h1>Hello, World!</h1>")
+    let db = database.connect().unwrap();
+    db.query("SELECT 1", params![]).await.unwrap();
+
+    let file_repository = FileRepository {};
+    let file_service = FileService {
+        file_repository,
+        db,
+        data_path: "./data/files".to_string(),
+    };
+
+    let context = Context { file_service };
+
+    context.serve().await;
 }
