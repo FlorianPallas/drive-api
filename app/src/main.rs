@@ -1,12 +1,12 @@
-use crate::{infrastructure::file_repository::FileRepository, ui::axum::ServeExt};
+use crate::{api::axum::ServeExt, infrastructure::file_repository::FileRepository};
 use anyhow::Result;
 use libsql::params;
 use logic::file_service::FileService;
 use tokio::fs;
 
+mod api;
 mod infrastructure;
 mod logic;
-mod ui;
 
 #[derive(Clone)]
 pub struct Context {
