@@ -8,3 +8,4 @@ axum = { version = "0.8", features = ["multipart"] }
 tokio = { version = "1.0", features = ["full"] }
 libsql = "0.9"
 anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
