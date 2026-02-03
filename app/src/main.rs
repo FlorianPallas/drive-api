@@ -1,6 +1,8 @@
 use crate::{infrastructure::file_repository::FileRepository, ui::axum::ServeExt};
+use anyhow::Result;
 use libsql::params;
 use logic::file_service::FileService;
+use tokio::fs;
 
 mod infrastructure;
 mod logic;
@@ -12,23 +14,29 @@ pub struct Context {
 }
 
 #[tokio::main]
-async fn main() {
-    let database = libsql::Builder::new_local("./data/drive.db")
-        .build()
-        .await
-        .unwrap();
+async fn main() -> Result<()> {
+    let data_root = "./data".to_string();
+    fs::create_dir_all(&data_root).await?;
 
-    let db = database.connect().unwrap();
-    db.query("SELECT 1", params![]).await.unwrap();
+    let files_root = format!("{}/files", data_root);
+    fs::create_dir_all(&files_root).await?;
+
+    let database_path = format!("{}/drive.db", data_root);
+    let database = libsql::Builder::new_local(&database_path).build().await?;
+
+    let db = database.connect()?;
+    db.query("SELECT 1", params![]).await?;
 
     let file_repository = FileRepository {};
     let file_service = FileService {
         file_repository,
         db,
-        data_path: "./data/files".to_string(),
+        files_root,
     };
 
     let context = Context { file_service };
 
-    context.serve().await;
+    context.serve().await?;
+
+    Ok(())
 }

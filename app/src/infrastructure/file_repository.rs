@@ -18,7 +18,7 @@ impl FileRepository {
             return Err(anyhow::anyhow!("File not found"));
         };
 
-        Ok(from_row(&row)?)
+        Ok(from_row::<FileEntityId>(&row)?.id)
     }
 
     pub async fn get_file(&self, db: &Connection, file_id: i64) -> Result<FileEntity> {
@@ -32,6 +32,11 @@ impl FileRepository {
 
         Ok(from_row(&row)?)
     }
+}
+
+#[derive(Debug, Deserialize)]
+struct FileEntityId {
+    pub id: i64,
 }
 
 #[derive(Debug, Deserialize)]

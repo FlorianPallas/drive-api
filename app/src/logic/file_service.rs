@@ -8,7 +8,7 @@ use crate::infrastructure::file_repository::FileRepository;
 pub struct FileService {
     pub file_repository: FileRepository,
     pub db: Connection,
-    pub data_path: String,
+    pub files_root: String,
 }
 
 impl FileService {
@@ -18,7 +18,7 @@ impl FileService {
             .insert_file(&self.db, file_path)
             .await?;
 
-        let disk_path = format!("{}/{}", self.data_path, file_id);
+        let disk_path = format!("{}/{}", self.files_root, file_id);
         fs::write(disk_path, content).await?;
 
         Ok(())
@@ -44,7 +44,7 @@ impl FileService {
     pub async fn download_file(&self, file_id: i64) -> Result<(File, Vec<u8>)> {
         let file = self.head_file(file_id).await?;
 
-        let disk_path = format!("{}/{}", self.data_path, file.id);
+        let disk_path = format!("{}/{}", self.files_root, file.id);
         let content = fs::read(disk_path).await?;
 
         Ok((file, content))
