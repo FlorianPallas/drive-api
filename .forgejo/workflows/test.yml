@@ -1,0 +1,15 @@
+on: [push]
+
+jobs:
+  test:
+    runs-on: docker
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+      - name: Install Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile=minimal
+          echo "$HOME/.cargo/bin" >> $FORGEJO_PATH
+      - name: Run Tests
+        run: cargo test
