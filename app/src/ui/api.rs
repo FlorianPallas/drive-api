@@ -10,23 +10,11 @@ use axum::{
 
 use crate::Context;
 
-pub trait ServeExt {
-    async fn serve(self) -> anyhow::Result<()>;
-}
-
-impl ServeExt for Context {
-    async fn serve(self) -> anyhow::Result<()> {
-        let app = Router::new()
-            .route("/", post(upload_file))
-            .route("/{file_id}", get(download_file))
-            .with_state(self);
-
-        let listener = tokio::net::TcpListener::bind("127.0.0.1:3000").await?;
-        println!("listening on {}", listener.local_addr()?);
-        axum::serve(listener, app).await?;
-
-        Ok(())
-    }
+pub fn route(context: Context) -> Router {
+    Router::new()
+        .route("/files", post(upload_file))
+        .route("/files/{file_id}", get(download_file))
+        .with_state(context)
 }
 
 async fn upload_file(
@@ -53,7 +41,7 @@ async fn download_file(
         .header("Content-Type", "image/png")
         .header(
             "Content-Disposition",
-            format!("attachment; filename=\"{}\"", file.name),
+            format!("inline; filename=\"{}\"", file.name),
         )
         .body(Body::from(data))?;
 
