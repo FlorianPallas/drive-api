@@ -6,26 +6,26 @@ use axum::{
     response::{Html, IntoResponse, Response},
     routing::get,
 };
-use tracing::info;
+use tracing::error;
 
 pub fn route() -> Router {
     Router::new().route("/", get(index))
 }
 
-struct RenderError(anyhow::Error);
+struct AppError(anyhow::Error);
 
-impl<E> From<E> for RenderError
+impl<E> From<E> for AppError
 where
     E: Into<anyhow::Error>,
 {
     fn from(err: E) -> Self {
-        RenderError(err.into())
+        AppError(err.into())
     }
 }
 
-impl IntoResponse for RenderError {
+impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        info!("RenderError: {}", self.0);
+        error!("AppError: {}", self.0);
 
         let html = ErrorTemplate {
             status_code: 500,
@@ -42,7 +42,7 @@ impl IntoResponse for RenderError {
     }
 }
 
-async fn index() -> Result<impl IntoResponse, RenderError> {
+async fn index() -> Result<impl IntoResponse, AppError> {
     let html = IndexTemplate { name: "World" }.render()?;
     Ok(Html(html))
 }

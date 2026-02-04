@@ -7,6 +7,7 @@ use axum::{
     response::{IntoResponse, Response},
     routing::{get, post},
 };
+use tracing::error;
 
 use crate::Context;
 
@@ -20,7 +21,7 @@ pub fn route(context: Context) -> Router {
 async fn upload_file(
     State(context): State<Context>,
     mut multipart: Multipart,
-) -> Result<(), AppError> {
+) -> Result<(), ApiError> {
     while let Some(field) = multipart.next_field().await? {
         let file_name = field.file_name().unwrap().to_string();
         let data = field.bytes().await?;
@@ -34,7 +35,7 @@ async fn upload_file(
 async fn download_file(
     State(context): State<Context>,
     Path(file_id): Path<i64>,
-) -> Result<impl IntoResponse, AppError> {
+) -> Result<impl IntoResponse, ApiError> {
     let (file, data) = context.file_service.download_file(file_id).await?;
 
     let response = axum::response::Response::builder()
@@ -48,10 +49,12 @@ async fn download_file(
     Ok(response)
 }
 
-struct AppError(anyhow::Error);
+struct ApiError(anyhow::Error);
 
-impl IntoResponse for AppError {
+impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
+        error!("ApiError: {}", self.0);
+
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             format!("Something went wrong: {}", self.0),
@@ -60,7 +63,7 @@ impl IntoResponse for AppError {
     }
 }
 
-impl<E> From<E> for AppError
+impl<E> From<E> for ApiError
 where
     E: Into<anyhow::Error>,
 {

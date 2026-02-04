@@ -3,6 +3,7 @@ use anyhow::Result;
 use libsql::params;
 use logic::file_service::FileService;
 use tokio::fs;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 mod infrastructure;
 mod logic;
@@ -15,6 +16,19 @@ pub struct Context {
 
 #[tokio::main]
 async fn main() -> Result<()> {
+    tracing_subscriber::registry()
+        .with(
+            tracing_subscriber::EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+                format!(
+                    "{}=debug,tower_http=debug,axum::rejection=trace",
+                    env!("CARGO_CRATE_NAME")
+                )
+                .into()
+            }),
+        )
+        .with(tracing_subscriber::fmt::layer())
+        .init();
+
     let data_root = "./data".to_string();
     fs::create_dir_all(&data_root).await?;
 
