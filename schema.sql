@@ -3,7 +3,8 @@ CREATE TABLE files (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     path TEXT NOT NULL UNIQUE,
     size INTEGER,
-    mime_type TEXT
+    mime_type TEXT,
+    trashed_at DATETIME DEFAULT NULL
 );
 
 DROP TABLE IF EXISTS jobs;

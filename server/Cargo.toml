@@ -13,3 +13,4 @@ tracing.workspace = true
 queue.workspace = true
 deadpool.workspace = true
 deadpool-libsql.workspace = true
+chrono.workspace = true

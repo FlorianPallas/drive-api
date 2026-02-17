@@ -4,11 +4,12 @@ members = ["aio", "server", "queue", "worker"]
 
 [workspace.dependencies]
 tokio = { version = "1.0", features = ["full"] }
-libsql = "0.9"
+libsql = { version = "0.9", features = ["serde"] }
 anyhow = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+chrono = { version = "0.4.43", features = ["serde"] }
 
 axum = { version = "0.8", features = ["multipart"] }
 serde_json = "1.0"

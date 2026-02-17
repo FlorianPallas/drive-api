@@ -1,4 +1,5 @@
 use anyhow::Result;
+use chrono::{DateTime, Utc};
 use deadpool_libsql::Connection;
 use libsql::{de::from_row, params};
 use serde::Deserialize;
@@ -44,6 +45,28 @@ impl FileRepository {
 
         Ok(files)
     }
+
+    pub async fn set_trashed_at(
+        &self,
+        db: &Connection,
+        file_id: i64,
+        trashed_at: DateTime<Utc>,
+    ) -> Result<()> {
+        db.execute(
+            "UPDATE files SET trashed_at = ? WHERE id = ?",
+            params![trashed_at, file_id],
+        )
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn delete_file(&self, db: &Connection, file_id: i64) -> Result<()> {
+        db.execute("DELETE FROM files WHERE id = ?", params![file_id])
+            .await?;
+
+        Ok(())
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -57,4 +80,5 @@ pub struct FileEntity {
     pub path: String,
     pub size: u64,
     pub mime_type: String,
+    pub trashed_at: Option<DateTime<Utc>>,
 }

@@ -1,4 +1,5 @@
 use anyhow::Result;
+use chrono::{DateTime, Utc};
 use deadpool_libsql::Pool;
 use queue::{Event, Queue};
 use serde::{Deserialize, Serialize};
@@ -60,7 +61,7 @@ impl FileService {
         Ok((file, content))
     }
 
-    pub async fn list_files(&self) -> Result<Vec<File>> {
+    pub async fn list_files(&self, trash: bool) -> Result<Vec<File>> {
         let file_entities = self
             .file_repository
             .list_files(&self.pool.get().await?)
@@ -68,20 +69,51 @@ impl FileService {
 
         let files = file_entities
             .into_iter()
-            .map(|file_entity| File {
-                id: file_entity.id,
-                name: file_entity
-                    .path
-                    .split("/")
-                    .last()
-                    .unwrap_or_default()
-                    .to_string(),
-                size: file_entity.size,
-                mime_type: file_entity.mime_type,
+            .filter(|file| {
+                if trash {
+                    file.trashed_at.is_some()
+                } else {
+                    file.trashed_at.is_none()
+                }
+            })
+            .map(|file| File {
+                id: file.id,
+                name: file.path.split("/").last().unwrap_or_default().to_string(),
+                size: file.size,
+                mime_type: file.mime_type,
             })
             .collect();
 
         Ok(files)
+    }
+
+    pub async fn trash_file(&self, file_id: i64) -> Result<()> {
+        self.file_repository
+            .set_trashed_at(&self.pool.get().await?, file_id, chrono::Utc::now())
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn delete_file(&self, file_id: i64) -> Result<()> {
+        let file = self.head_file(file_id).await?;
+
+        let disk_path = format!("{}/{}", self.files_root, file.id);
+        fs::remove_file(disk_path).await?;
+
+        self.file_repository
+            .delete_file(&self.pool.get().await?, file_id)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn restore_file(&self, file_id: i64) -> Result<()> {
+        self.file_repository
+            .delete_file(&self.pool.get().await?, file_id)
+            .await?;
+
+        Ok(())
     }
 }
 
