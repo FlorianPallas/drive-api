@@ -1,6 +1,6 @@
 use anyhow::Result;
 use axum::{
-    Router,
+    Json, Router,
     body::Body,
     extract::{Multipart, Path, State},
     http::StatusCode,
@@ -9,13 +9,20 @@ use axum::{
 };
 use tracing::error;
 
-use crate::Context;
+use crate::{Context, logic::file_service::File};
 
 pub fn route(context: Context) -> Router {
     Router::new()
+        .route("/files", get(list_files))
         .route("/files", post(upload_file))
         .route("/files/{file_id}", get(download_file))
         .with_state(context)
+}
+
+async fn list_files(State(context): State<Context>) -> Result<Json<Vec<File>>, ApiError> {
+    let files = context.file_service.list_files().await?;
+
+    Ok(Json(files))
 }
 
 async fn upload_file(

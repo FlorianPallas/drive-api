@@ -1,0 +1,14 @@
+[package]
+name = "drive_worker"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+tokio.workspace = true
+libsql.workspace = true
+anyhow.workspace = true
+serde.workspace = true
+tracing.workspace = true
+queue.workspace = true
+infer.workspace = true
+deadpool-libsql.workspace = true

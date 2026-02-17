@@ -1,0 +1,15 @@
+[package]
+name = "drive_server"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+axum.workspace = true
+tokio.workspace = true
+libsql.workspace = true
+anyhow.workspace = true
+serde.workspace = true
+tracing.workspace = true
+queue.workspace = true
+deadpool.workspace = true
+deadpool-libsql.workspace = true

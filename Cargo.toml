@@ -1,3 +1,21 @@
 [workspace]
 resolver = "3"
-members = ["app"]
+members = ["aio", "server", "queue", "worker"]
+
+[workspace.dependencies]
+tokio = { version = "1.0", features = ["full"] }
+libsql = "0.9"
+anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+axum = { version = "0.8", features = ["multipart"] }
+serde_json = "1.0"
+
+infer = "0.19.0"
+
+queue = { path = "./queue" }
+
+deadpool = { version = "0.12.3", features = ["rt_tokio_1"] }
+deadpool-libsql = "0.1.0"
