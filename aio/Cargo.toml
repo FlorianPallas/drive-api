@@ -8,8 +8,7 @@ anyhow.workspace = true
 tokio.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
-libsql.workspace = true
 drive_server = { path = "../server" }
 drive_worker = { path = "../worker" }
-deadpool.workspace = true
-deadpool-libsql.workspace = true
+clorinde.workspace = true
+refinery.workspace = true

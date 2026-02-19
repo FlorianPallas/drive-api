@@ -6,11 +6,10 @@ edition = "2024"
 [dependencies]
 axum.workspace = true
 tokio.workspace = true
-libsql.workspace = true
 anyhow.workspace = true
 serde.workspace = true
 tracing.workspace = true
 queue.workspace = true
-deadpool.workspace = true
-deadpool-libsql.workspace = true
+clorinde.workspace = true
 chrono.workspace = true
+serde_json.workspace = true
