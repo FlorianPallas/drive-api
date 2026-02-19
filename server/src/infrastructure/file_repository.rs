@@ -28,7 +28,7 @@ impl FileRepository {
         &self,
         client: &Client,
         file_id: i64,
-        trashed_at: NaiveDateTime,
+        trashed_at: Option<NaiveDateTime>,
     ) -> Result<()> {
         files::set_trashed_at()
             .bind(client, &trashed_at, &file_id)

@@ -3,6 +3,10 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Event {
     FileUploaded { file_id: i64 },
+    FileDownloaded { file_id: i64 },
+    FileTrashed { file_id: i64 },
+    FileRestored { file_id: i64 },
+    FileDeleted { file_id: i64 },
 }
 
 use anyhow::Result;
@@ -15,13 +19,17 @@ use clorinde::{
 pub struct EventRepository {}
 
 impl EventRepository {
-    pub async fn enqueue(&self, client: &Client, payload: &String) -> Result<()> {
-        queue::enqueue().bind(client, payload).await?;
+    pub async fn enqueue(&self, client: &Client, payload: &String, event_type: &str) -> Result<()> {
+        queue::enqueue().bind(client, payload, &event_type).await?;
         Ok(())
     }
 
-    pub async fn dequeue(&self, client: &Client) -> Result<Option<EventEntity>> {
-        let event = queue::dequeue().bind(client).opt().await?;
+    pub async fn dequeue(
+        &self,
+        client: &Client,
+        event_types: &[&str],
+    ) -> Result<Option<EventEntity>> {
+        let event = queue::dequeue().bind(client, &event_types).opt().await?;
         Ok(event)
     }
 

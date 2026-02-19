@@ -28,6 +28,7 @@ impl FileService {
             .enqueue(
                 &conn,
                 &serde_json::to_string(&Event::FileUploaded { file_id })?,
+                "FileUploaded",
             )
             .await?;
 
@@ -43,10 +44,20 @@ impl FileService {
     }
 
     pub async fn download_file(&self, file_id: i64) -> Result<(File, Vec<u8>)> {
+        let conn = self.pool.get().await?;
+
         let file = self.head_file(file_id).await?;
 
         let disk_path = format!("{}/{}", self.files_root, file.id);
         let content = fs::read(disk_path).await?;
+
+        self.event_repository
+            .enqueue(
+                &conn,
+                &serde_json::to_string(&Event::FileDownloaded { file_id })?,
+                "FileDownloaded",
+            )
+            .await?;
 
         Ok((file, content))
     }
@@ -73,29 +84,56 @@ impl FileService {
     }
 
     pub async fn trash_file(&self, file_id: i64) -> Result<()> {
+        let conn = self.pool.get().await?;
+
         self.file_repository
-            .set_trashed_at(&self.pool.get().await?, file_id, Local::now().naive_local())
+            .set_trashed_at(&conn, file_id, Some(Local::now().naive_local()))
+            .await?;
+
+        self.event_repository
+            .enqueue(
+                &conn,
+                &serde_json::to_string(&Event::FileTrashed { file_id })?,
+                "FileTrashed",
+            )
             .await?;
 
         Ok(())
     }
 
     pub async fn delete_file(&self, file_id: i64) -> Result<()> {
+        let conn = self.pool.get().await?;
         let file = self.head_file(file_id).await?;
 
         let disk_path = format!("{}/{}", self.files_root, file.id);
         fs::remove_file(disk_path).await?;
 
-        self.file_repository
-            .delete_file(&self.pool.get().await?, file_id)
+        self.file_repository.delete_file(&conn, file_id).await?;
+
+        self.event_repository
+            .enqueue(
+                &conn,
+                &serde_json::to_string(&Event::FileDeleted { file_id })?,
+                "FileDeleted",
+            )
             .await?;
 
         Ok(())
     }
 
     pub async fn restore_file(&self, file_id: i64) -> Result<()> {
+        let conn = self.pool.get().await?;
+
         self.file_repository
-            .delete_file(&self.pool.get().await?, file_id)
+            .set_trashed_at(&conn, file_id, None)
+            .await?;
+
+        self.event_repository
+            .enqueue(
+                &conn,
+                &serde_json::to_string(&Event::FileRestored { file_id })?,
+                "FileRestored",
+            )
             .await?;
 
         Ok(())

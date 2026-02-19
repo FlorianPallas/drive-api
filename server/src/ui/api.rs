@@ -2,13 +2,12 @@ use anyhow::Result;
 use axum::{
     Json, Router,
     body::Body,
-    extract::{Multipart, Path, Query, State},
+    extract::{Multipart, Path, State},
     http::StatusCode,
     response::{IntoResponse, Response},
     routing::{delete, get, post},
 };
-use serde::{Deserialize, Serialize};
-use tracing::{error, info};
+use tracing::error;
 
 use crate::{Context, logic::file_service::File};
 
@@ -19,6 +18,8 @@ pub fn route(context: Context) -> Router {
         .route("/files/{id}", get(download_file))
         .route("/files/{id}", delete(delete_file))
         .route("/files/trash", get(list_trashed_files))
+        .route("/files/trash", post(trash_file))
+        .route("/files/trash/{id}", delete(restore_file))
         .with_state(context)
 }
 
@@ -65,24 +66,18 @@ async fn download_file(
     Ok(response)
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-struct DeleteFileQuery {
-    skip_trash: bool,
+async fn delete_file(State(context): State<Context>, Path(id): Path<i64>) -> Result<(), ApiError> {
+    context.file_service.delete_file(id).await?;
+    Ok(())
 }
 
-async fn delete_file(
-    State(context): State<Context>,
-    Path(id): Path<i64>,
-    Query(query): Query<DeleteFileQuery>,
-) -> Result<(), ApiError> {
-    info!("{:?}", query);
+async fn trash_file(State(context): State<Context>, Path(id): Path<i64>) -> Result<(), ApiError> {
+    context.file_service.trash_file(id).await?;
+    Ok(())
+}
 
-    if query.skip_trash {
-        context.file_service.delete_file(id).await?;
-    } else {
-        context.file_service.trash_file(id).await?;
-    }
-
+async fn restore_file(State(context): State<Context>, Path(id): Path<i64>) -> Result<(), ApiError> {
+    context.file_service.restore_file(id).await?;
     Ok(())
 }
 

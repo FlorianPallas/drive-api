@@ -9,7 +9,7 @@ SELECT * FROM files WHERE id = :id;
 --! list_files : FileEntity
 SELECT * FROM files;
 
---! set_trashed_at
+--! set_trashed_at (trashed_at?)
 UPDATE files SET trashed_at = :trashed_at WHERE id = :id;
 
 --! delete_file

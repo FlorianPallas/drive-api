@@ -1,6 +1,11 @@
 // This file was generated with `clorinde`. Do not modify.
 
 #[derive(Debug)]
+pub struct EnqueueParams<T1: crate::StringSql, T2: crate::StringSql> {
+    pub payload: T1,
+    pub r#type: T2,
+}
+#[derive(Debug)]
 pub struct UpdateStatusParams<T1: crate::StringSql> {
     pub status: T1,
     pub id: i64,
@@ -10,11 +15,13 @@ pub struct EventEntity {
     pub id: i64,
     pub status: String,
     pub payload: String,
+    pub r#type: String,
 }
 pub struct EventEntityBorrowed<'a> {
     pub id: i64,
     pub status: &'a str,
     pub payload: &'a str,
+    pub r#type: &'a str,
 }
 impl<'a> From<EventEntityBorrowed<'a>> for EventEntity {
     fn from(
@@ -22,12 +29,14 @@ impl<'a> From<EventEntityBorrowed<'a>> for EventEntity {
             id,
             status,
             payload,
+            r#type,
         }: EventEntityBorrowed<'a>,
     ) -> Self {
         Self {
             id,
             status: status.into(),
             payload: payload.into(),
+            r#type: r#type.into(),
         }
     }
 }
@@ -102,7 +111,7 @@ where
 }
 pub struct EnqueueStmt(&'static str, Option<tokio_postgres::Statement>);
 pub fn enqueue() -> EnqueueStmt {
-    EnqueueStmt("INSERT INTO jobs (payload) VALUES ($1)", None)
+    EnqueueStmt("INSERT INTO jobs (payload, type) VALUES ($1, $2)", None)
 }
 impl EnqueueStmt {
     pub async fn prepare<'a, C: GenericClient>(
@@ -112,18 +121,41 @@ impl EnqueueStmt {
         self.1 = Some(client.prepare(self.0).await?);
         Ok(self)
     }
-    pub async fn bind<'c, 'a, 's, C: GenericClient, T1: crate::StringSql>(
+    pub async fn bind<'c, 'a, 's, C: GenericClient, T1: crate::StringSql, T2: crate::StringSql>(
         &'s self,
         client: &'c C,
         payload: &'a T1,
+        r#type: &'a T2,
     ) -> Result<u64, tokio_postgres::Error> {
-        client.execute(self.0, &[payload]).await
+        client.execute(self.0, &[payload, r#type]).await
+    }
+}
+impl<'a, C: GenericClient + Send + Sync, T1: crate::StringSql, T2: crate::StringSql>
+    crate::client::async_::Params<
+        'a,
+        'a,
+        'a,
+        EnqueueParams<T1, T2>,
+        std::pin::Pin<
+            Box<dyn futures::Future<Output = Result<u64, tokio_postgres::Error>> + Send + 'a>,
+        >,
+        C,
+    > for EnqueueStmt
+{
+    fn params(
+        &'a self,
+        client: &'a C,
+        params: &'a EnqueueParams<T1, T2>,
+    ) -> std::pin::Pin<
+        Box<dyn futures::Future<Output = Result<u64, tokio_postgres::Error>> + Send + 'a>,
+    > {
+        Box::pin(self.bind(client, &params.payload, &params.r#type))
     }
 }
 pub struct DequeueStmt(&'static str, Option<tokio_postgres::Statement>);
 pub fn dequeue() -> DequeueStmt {
     DequeueStmt(
-        "UPDATE jobs SET status = 'Running' WHERE id = (SELECT id FROM jobs WHERE status = 'Pending' LIMIT 1) RETURNING *",
+        "UPDATE jobs SET status = 'Running' WHERE id = (SELECT id FROM jobs WHERE status = 'Pending' AND type = ANY(ARRAY[$1::VARCHAR[]]) LIMIT 1) RETURNING *",
         None,
     )
 }
@@ -135,13 +167,21 @@ impl DequeueStmt {
         self.1 = Some(client.prepare(self.0).await?);
         Ok(self)
     }
-    pub fn bind<'c, 'a, 's, C: GenericClient>(
+    pub fn bind<
+        'c,
+        'a,
+        's,
+        C: GenericClient,
+        T1: crate::StringSql,
+        T2: crate::ArraySql<Item = T1>,
+    >(
         &'s self,
         client: &'c C,
-    ) -> EventEntityQuery<'c, 'a, 's, C, EventEntity, 0> {
+        types: &'a T2,
+    ) -> EventEntityQuery<'c, 'a, 's, C, EventEntity, 1> {
         EventEntityQuery {
             client,
-            params: [],
+            params: [types],
             query: self.0,
             cached: self.1.as_ref(),
             extractor:
@@ -150,6 +190,7 @@ impl DequeueStmt {
                         id: row.try_get(0)?,
                         status: row.try_get(1)?,
                         payload: row.try_get(2)?,
+                        r#type: row.try_get(3)?,
                     })
                 },
             mapper: |it| EventEntity::from(it),

@@ -2,7 +2,7 @@
 
 #[derive(Clone, Copy, Debug)]
 pub struct SetTrashedAtParams {
-    pub trashed_at: chrono::NaiveDateTime,
+    pub trashed_at: Option<chrono::NaiveDateTime>,
     pub id: i64,
 }
 #[derive(Debug)]
@@ -291,7 +291,7 @@ impl SetTrashedAtStmt {
     pub async fn bind<'c, 'a, 's, C: GenericClient>(
         &'s self,
         client: &'c C,
-        trashed_at: &'a chrono::NaiveDateTime,
+        trashed_at: &'a Option<chrono::NaiveDateTime>,
         id: &'a i64,
     ) -> Result<u64, tokio_postgres::Error> {
         client.execute(self.0, &[trashed_at, id]).await

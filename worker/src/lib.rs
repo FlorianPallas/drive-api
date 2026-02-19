@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use clorinde::{
     deadpool_postgres::{Client, Pool},
     queries::files,
@@ -19,7 +19,7 @@ pub async fn run(pool: Pool) -> Result<()> {
     loop {
         let db = pool.get().await?;
 
-        let Some(job) = event_repository.dequeue(&db).await? else {
+        let Some(job) = event_repository.dequeue(&db, &["FileUploaded"]).await? else {
             tokio::time::sleep(Duration::from_secs(1)).await;
             continue;
         };
@@ -29,6 +29,7 @@ pub async fn run(pool: Pool) -> Result<()> {
 
         let handle_result: Result<(), anyhow::Error> = match payload {
             Event::FileUploaded { file_id } => analyze_file(&files_root, &db, file_id).await,
+            _ => Err(anyhow!("Unknown event type")),
         };
 
         match handle_result {
