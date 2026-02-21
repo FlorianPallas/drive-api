@@ -1,13 +1,22 @@
---: EventEntity(id, status, payload)
+--: JobEntity(id, status, payload, created_at, updated_at)
 
 --! enqueue
-INSERT INTO jobs (payload, type) VALUES (:payload, :type);
+INSERT INTO jobs (payload, created_at, updated_at) VALUES (:payload, :created_at, :updated_at);
 
---! dequeue : EventEntity
-UPDATE jobs SET status = 'Running' WHERE id = (SELECT id FROM jobs WHERE status = 'Pending' AND type = ANY(ARRAY[:types::VARCHAR[]]) LIMIT 1) RETURNING *;
+--! dequeue : JobEntity
+UPDATE jobs
+SET status = 'running', updated_at = :updated_at
+WHERE id = (
+    SELECT id
+    FROM jobs
+    WHERE status = 'pending'
+    ORDER BY created_at
+    FOR UPDATE SKIP LOCKED
+    LIMIT 1
+) RETURNING *;
 
 --! delete
 DELETE FROM jobs WHERE id = :id;
 
 --! update_status
-UPDATE jobs SET status = :status WHERE id = :id;
+UPDATE jobs SET status = :status, updated_at = :updated_at WHERE id = :id;

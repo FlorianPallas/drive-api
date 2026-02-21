@@ -1,7 +1,7 @@
 use anyhow::Result;
 use chrono::Local;
 use clorinde::{deadpool_postgres::Pool, queries::files::FileEntity};
-use queue::{Event, EventRepository};
+use queue::{Job, JobRepository};
 use serde::{Deserialize, Serialize};
 use tokio::fs;
 
@@ -10,7 +10,7 @@ use crate::infrastructure::file_repository::FileRepository;
 #[derive(Clone)]
 pub struct FileService {
     pub file_repository: FileRepository,
-    pub event_repository: EventRepository,
+    pub job_repository: JobRepository,
     pub files_root: String,
     pub pool: Pool,
 }
@@ -24,12 +24,8 @@ impl FileService {
         let disk_path = format!("{}/{}", self.files_root, file_id);
         fs::write(disk_path, content).await?;
 
-        self.event_repository
-            .enqueue(
-                &conn,
-                &serde_json::to_string(&Event::FileUploaded { file_id })?,
-                "FileUploaded",
-            )
+        self.job_repository
+            .enqueue(&conn, &serde_json::to_value(Job::AnalyzeFile { file_id })?)
             .await?;
 
         Ok(())
@@ -44,20 +40,10 @@ impl FileService {
     }
 
     pub async fn download_file(&self, file_id: i64) -> Result<(File, Vec<u8>)> {
-        let conn = self.pool.get().await?;
-
         let file = self.head_file(file_id).await?;
 
         let disk_path = format!("{}/{}", self.files_root, file.id);
         let content = fs::read(disk_path).await?;
-
-        self.event_repository
-            .enqueue(
-                &conn,
-                &serde_json::to_string(&Event::FileDownloaded { file_id })?,
-                "FileDownloaded",
-            )
-            .await?;
 
         Ok((file, content))
     }
@@ -90,14 +76,6 @@ impl FileService {
             .set_trashed_at(&conn, file_id, Some(Local::now().naive_local()))
             .await?;
 
-        self.event_repository
-            .enqueue(
-                &conn,
-                &serde_json::to_string(&Event::FileTrashed { file_id })?,
-                "FileTrashed",
-            )
-            .await?;
-
         Ok(())
     }
 
@@ -110,14 +88,6 @@ impl FileService {
 
         self.file_repository.delete_file(&conn, file_id).await?;
 
-        self.event_repository
-            .enqueue(
-                &conn,
-                &serde_json::to_string(&Event::FileDeleted { file_id })?,
-                "FileDeleted",
-            )
-            .await?;
-
         Ok(())
     }
 
@@ -126,14 +96,6 @@ impl FileService {
 
         self.file_repository
             .set_trashed_at(&conn, file_id, None)
-            .await?;
-
-        self.event_repository
-            .enqueue(
-                &conn,
-                &serde_json::to_string(&Event::FileRestored { file_id })?,
-                "FileRestored",
-            )
             .await?;
 
         Ok(())

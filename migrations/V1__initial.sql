@@ -6,8 +6,12 @@ CREATE TABLE files (
     trashed_at TIMESTAMP
 );
 
+CREATE TYPE job_status AS ENUM ('pending', 'running', 'failed');
+
 CREATE TABLE jobs (
     id BIGSERIAL PRIMARY KEY,
-    status TEXT NOT NULL DEFAULT 'Pending',
-    payload TEXT NOT NULL
+    status job_status NOT NULL DEFAULT 'pending',
+    payload JSONB NOT NULL,
+    created_at TIMESTAMP NOT NULL,
+    updated_at TIMESTAMP NOT NULL
 );

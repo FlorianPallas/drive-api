@@ -1,40 +1,39 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub enum Event {
-    FileUploaded { file_id: i64 },
-    FileDownloaded { file_id: i64 },
-    FileTrashed { file_id: i64 },
-    FileRestored { file_id: i64 },
-    FileDeleted { file_id: i64 },
+pub enum Job {
+    AnalyzeFile { file_id: i64 },
 }
 
 use anyhow::Result;
+use chrono::Local;
 use clorinde::{
     deadpool_postgres::Client,
-    queries::queue::{self, EventEntity},
+    queries::queue::{self, JobEntity},
+    types::JobStatus,
 };
 
 #[derive(Clone)]
-pub struct EventRepository {}
+pub struct JobRepository {}
 
-impl EventRepository {
-    pub async fn enqueue(&self, client: &Client, payload: &String, event_type: &str) -> Result<()> {
-        queue::enqueue().bind(client, payload, &event_type).await?;
+impl JobRepository {
+    pub async fn enqueue(&self, client: &Client, payload: &serde_json::Value) -> Result<()> {
+        let now = Local::now().naive_local();
+        queue::enqueue().bind(client, &payload, &now, &now).await?;
         Ok(())
     }
 
-    pub async fn dequeue(
-        &self,
-        client: &Client,
-        event_types: &[&str],
-    ) -> Result<Option<EventEntity>> {
-        let event = queue::dequeue().bind(client, &event_types).opt().await?;
+    pub async fn dequeue(&self, client: &Client) -> Result<Option<JobEntity>> {
+        let now = Local::now().naive_local();
+        let event = queue::dequeue().bind(client, &now).opt().await?;
         Ok(event)
     }
 
-    pub async fn update_status(&self, client: &Client, id: i64, status: &str) -> Result<()> {
-        queue::update_status().bind(client, &status, &id).await?;
+    pub async fn update_status(&self, client: &Client, id: i64, status: &JobStatus) -> Result<()> {
+        let now = Local::now().naive_local();
+        queue::update_status()
+            .bind(client, status, &now, &id)
+            .await?;
         Ok(())
     }
 

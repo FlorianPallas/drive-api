@@ -1,11 +1,12 @@
 use std::time::Duration;
 
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use clorinde::{
     deadpool_postgres::{Client, Pool},
     queries::files,
+    types::JobStatus,
 };
-use queue::{Event, EventRepository};
+use queue::{Job, JobRepository};
 use tokio::{fs, io::AsyncReadExt};
 use tracing::{debug, info, warn};
 
@@ -14,22 +15,21 @@ pub async fn run(pool: Pool) -> Result<()> {
 
     let files_root = "./data/files".to_string();
 
-    let event_repository = EventRepository {};
+    let event_repository = JobRepository {};
 
     loop {
         let db = pool.get().await?;
 
-        let Some(job) = event_repository.dequeue(&db, &["FileUploaded"]).await? else {
+        let Some(job) = event_repository.dequeue(&db).await? else {
             tokio::time::sleep(Duration::from_secs(1)).await;
             continue;
         };
 
         let job_id = job.id;
-        let payload = serde_json::from_str(&job.payload)?;
+        let payload = serde_json::from_value(job.payload)?;
 
         let handle_result: Result<(), anyhow::Error> = match payload {
-            Event::FileUploaded { file_id } => analyze_file(&files_root, &db, file_id).await,
-            _ => Err(anyhow!("Unknown event type")),
+            Job::AnalyzeFile { file_id } => analyze_file(&files_root, &db, file_id).await,
         };
 
         match handle_result {
@@ -40,7 +40,7 @@ pub async fn run(pool: Pool) -> Result<()> {
             Err(err) => {
                 warn!("Job {} failed: {}", job_id, &err);
                 event_repository
-                    .update_status(&db, job_id, "Failed")
+                    .update_status(&db, job_id, &JobStatus::failed)
                     .await?;
             }
         }
