@@ -1,15 +1,8 @@
-use std::ops::DerefMut;
-
 use anyhow::Result;
-use clorinde::{
-    deadpool_postgres::{Config, Runtime},
-    tokio_postgres::NoTls,
-};
+use sqlx::postgres::PgPoolOptions;
 use tokio::fs;
 use tracing::info;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
-refinery::embed_migrations!("../migrations");
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -35,14 +28,9 @@ async fn main() -> Result<()> {
     fs::create_dir_all(&files_root).await?;
 
     info!("Connecting to database");
-    let mut config = Config::new();
-    config.url = Some("postgresql://postgres:postgres@localhost:5432/drive".to_string());
-    let pool = config.create_pool(Some(Runtime::Tokio1), NoTls).unwrap();
-
-    info!("Running migrations");
-    let mut client = pool.get().await?;
-    migrations::runner()
-        .run_async(client.deref_mut().deref_mut())
+    let pool = PgPoolOptions::new()
+        .max_connections(5)
+        .connect("postgresql://postgres:postgres@localhost:5432/postgres")
         .await?;
 
     info!("Starting worker");

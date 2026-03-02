@@ -1,43 +1,69 @@
 use anyhow::Result;
-use chrono::NaiveDateTime;
-use clorinde::{
-    deadpool_postgres::Client,
-    queries::files::{self, FileEntity},
-};
+use sqlx::PgConnection;
+
+#[derive(Debug, Clone)]
+pub struct FileEntity {
+    pub id: i32,
+    pub path: String,
+    pub size: i64,
+    pub mime_type: String,
+    pub created_at: chrono::NaiveDateTime,
+    pub updated_at: chrono::NaiveDateTime,
+}
 
 #[derive(Clone)]
 pub struct FileRepository {}
 
 impl FileRepository {
-    pub async fn insert_file(&self, client: &Client, file_path: &str) -> Result<i64> {
-        let id = files::insert_file().bind(client, &file_path).one().await?;
-        Ok(id)
+    pub async fn get_file_by_id(
+        &self,
+        conn: &mut PgConnection,
+        id: i32,
+    ) -> Result<Option<FileEntity>> {
+        let entity = sqlx::query_as!(FileEntity, "SELECT * FROM files WHERE id = $1", id)
+            .fetch_optional(conn)
+            .await?;
+        Ok(entity)
     }
 
-    pub async fn get_file(&self, client: &Client, file_id: i64) -> Result<FileEntity> {
-        let file = files::get_file().bind(client, &file_id).one().await?;
-        Ok(file)
+    pub async fn insert_file(
+        &self,
+        conn: &mut PgConnection,
+        path: &str,
+        size: i64,
+        mime_type: &str,
+    ) -> Result<FileEntity> {
+        let entity = sqlx::query_as!(
+            FileEntity,
+            "INSERT INTO files (path, size, mime_type) VALUES ($1, $2, $3) RETURNING *",
+            path,
+            size,
+            mime_type
+        )
+        .fetch_one(conn)
+        .await?;
+        Ok(entity)
     }
 
-    pub async fn list_files(&self, client: &Client) -> Result<Vec<FileEntity>> {
-        let files = files::list_files().bind(client).all().await?;
+    pub async fn list_files(
+        &self,
+        conn: &mut PgConnection,
+        prefix: &str,
+    ) -> Result<Vec<FileEntity>> {
+        let files = sqlx::query_as!(
+            FileEntity,
+            "SELECT * FROM files WHERE path LIKE $1",
+            format!("{}%", prefix)
+        )
+        .fetch_all(conn)
+        .await?;
         Ok(files)
     }
 
-    pub async fn set_trashed_at(
-        &self,
-        client: &Client,
-        file_id: i64,
-        trashed_at: Option<NaiveDateTime>,
-    ) -> Result<()> {
-        files::set_trashed_at()
-            .bind(client, &trashed_at, &file_id)
+    pub async fn delete_file_by_id(&self, conn: &mut PgConnection, id: i32) -> Result<()> {
+        sqlx::query!("DELETE FROM files WHERE id = $1", id)
+            .execute(conn)
             .await?;
-        Ok(())
-    }
-
-    pub async fn delete_file(&self, client: &Client, file_id: i64) -> Result<()> {
-        files::delete_file().bind(client, &file_id).await?;
         Ok(())
     }
 }

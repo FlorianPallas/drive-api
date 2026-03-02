@@ -1,0 +1,8 @@
+CREATE TABLE files (
+    id SERIAL PRIMARY KEY,
+    path TEXT NOT NULL UNIQUE,
+    size BIGINT NOT NULL,
+    mime_type TEXT NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP NOT NULL DEFAULT NOW()
+);

@@ -5,10 +5,6 @@ edition = "2024"
 
 [dependencies]
 tokio.workspace = true
-clorinde.workspace = true
 anyhow.workspace = true
-serde.workspace = true
 tracing.workspace = true
-queue.workspace = true
-infer.workspace = true
-serde_json.workspace = true
+sqlx.workspace = true

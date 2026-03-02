@@ -10,5 +10,4 @@ tracing.workspace = true
 tracing-subscriber.workspace = true
 drive_server = { path = "../server" }
 drive_worker = { path = "../worker" }
-clorinde.workspace = true
-refinery.workspace = true
+sqlx.workspace = true
