@@ -1,0 +1,6 @@
+target
+.woodpecker
+.git
+.gitignore
+Containerfile
+.containerignore

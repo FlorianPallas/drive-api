@@ -5,4 +5,10 @@ steps:
   test:
     image: rust:1
     commands:
+      - cargo check --workspace
+      - cargo install sqlx-cli
+      - cargo sqlx prepare --workspace --check
       - cargo test
+      - rustup component add rustfmt clippy
+      - cargo fmt --check
+      - cargo clippy
