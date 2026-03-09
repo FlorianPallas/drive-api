@@ -4,3 +4,4 @@ target
 .gitignore
 Containerfile
 .containerignore
+justfile
